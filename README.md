@@ -21,7 +21,7 @@ amdefine to expose it as a CommonJS module.
 API
 ---
 
-##### Configure your falseskill installment:
+##### Configure your FalseSkill installment:
 
 ```ts
 // Defaults
