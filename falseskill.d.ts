@@ -22,8 +22,6 @@ declare module falseskill {
     export interface PlayerRating extends OpponentRating {
         volatility : number
     }
-
-    export function newRating() : PlayerRating;
     
     export function calculateRatingDidNotCompete(player : PlayerRating) : PlayerRating;
     
