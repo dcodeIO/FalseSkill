@@ -77,24 +77,23 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     function E_cached(rating, opponentRating, g_opponent) {
         return 1.0 / (1.0 + Math.exp(-g_opponent * (rating - opponentRating)))
     }
-    var v = 0
-    var cached_gj = [],
-        cached_Ej = []
-    opponents.forEach(opponent => {
-        var gj = g(opponent.deviation)
-        cached_gj.push(gj)
-        var Ej = E_cached(player.rating, opponent.rating, gj)
-        cached_Ej.push(Ej)
-        v += Math_sq(gj) * Ej * (1.0 - Ej)
+    var v = 0.0
+    var DSum = 0
+    opponents.forEach((opponent, index) => {
+        var g_j = g(opponent.deviation)
+        // var E_J = E(player.rating, opponent.rating, opponent.deviation)
+        var E_j = E_cached(player.rating, opponent.rating, g_j)
+        v += Math_sq(g_j) * E_j * (1.0 - E_j)
+        DSum += g_j * (outcomes[index] - E_j) // Moved here from Step 4
     })
     v = 1.0 / v
     
     // Step 4: Compute the quantity ∆, the estimated improvement in rating by comparing the
     //         pre-period rating to the performance rating based only on game outcomes
-    var DSum = 0
+    /* var DSum = 0
     opponents.forEach((opponent, index) => {
-        DSum += cached_gj[index] * (outcomes[index] - cached_Ej[index])
-    })
+        DSum += cached_g[index] * (outcomes[index] - cached_E[index])
+    }) */
     var D = v * DSum
     
     // Step 5: Determine the new value, σ, of the volatility
@@ -207,7 +206,7 @@ export function deriveMatches(rankings : Ranking[], filterBy? : PlayerRating) : 
     //  [p1] rank 1,
     //  [p2, p3] rank 2 (draw between p2 and p3),
     //  [p4] rank 3
-    // ]    
+    // ]
     interface IndexedPlayer {
         rank: number,
         player : PlayerRating
@@ -281,7 +280,7 @@ function calculateMatchQualityG1(player : PlayerRating, opponent : OpponentRatin
 }
 
 /**
- * Calculates the presumed match quality for the specified player.
+ * Calculates the presumed match quality for the specified player in a multiplayer game (2-N players).
  * Returns a structure of numbers in the range of [0.0, 1.0] with 1.0 being the best quality (a draw).
  */
 export function calculateMatchQuality(player : PlayerRating, opponents : OpponentRating[]) : MatchQuality {

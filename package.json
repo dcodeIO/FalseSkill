@@ -1,6 +1,6 @@
 {
   "name": "falseskill",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A literal implementation of the Glicko-2 rating system in TypeScript. Got it?",
   "author": "Daniel Wirtz <dcode@dcode.io>",
   "main": "./index.js",
