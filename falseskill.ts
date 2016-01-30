@@ -14,13 +14,13 @@
 // results. If the application of Glicko-2 is expected to involve extremely improbable
 // collections of game outcomes, then τ should be set to a small value, even as small as,
 // say, τ = 0.2.
-export const Tau = 0.75
+export var Tau = 0.75
 
 // If the player is unrated, set the rating to 1500 and the RD to 350. Set the player’s
 // volatility to 0.06 (this value depends on the particular application).
-export const InitialRating     = 1500
-export const InitialDeviation  = 350
-export const InitialVolatility = 0.06
+export var InitialRating     = 1500
+export var InitialDeviation  = 350
+export var InitialVolatility = 0.06
 
 // 0 for a loss, 0.5 for a draw, and 1 for a win
 export const Loss = 0.0
@@ -51,7 +51,6 @@ export function newRating() : PlayerRating {
 }
 
 const PiSq = Math.PI * Math.PI
-const TauSq = Tau * Tau
 
 /**
  * Calculates a player's new rating once a rating period has concluded.
@@ -93,6 +92,7 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     // Step 5: Determine the new value, σ, of the volatility
     var a = Math.log(Math_sq(player.volatility))
     var deviationSq = Math_sq(player.deviation)
+    const TauSq = Tau * Tau
     function f(x) {
         var ePowX = Math.pow(Math.E, x)
         return (ePowX * (Math_sq(D) - deviationSq - v - ePowX)) / Math_sq(2.0 * (deviationSq + v + ePowX))
@@ -321,7 +321,7 @@ export function toGlicko2Scale(rating : PlayerRating) : PlayerRating {
 }
 
 export function toGlicko1Scale(rating : PlayerRating) : PlayerRating {
-    // r' = 173.7178µ + 1500, RD' = 173.7178φ²
+    // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
     return {
         rating: 173.7178 * rating.rating + 1500.0,
         deviation: 173.7178 * rating.deviation,

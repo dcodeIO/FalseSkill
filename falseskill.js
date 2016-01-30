@@ -35,7 +35,6 @@ define(["require", "exports"], function (require, exports) {
     }
     exports.newRating = newRating;
     var PiSq = Math.PI * Math.PI;
-    var TauSq = exports.Tau * exports.Tau;
     /**
      * Calculates a player's new rating once a rating period has concluded.
      */
@@ -71,6 +70,7 @@ define(["require", "exports"], function (require, exports) {
         // Step 5: Determine the new value, σ, of the volatility
         var a = Math.log(Math_sq(player.volatility));
         var deviationSq = Math_sq(player.deviation);
+        var TauSq = exports.Tau * exports.Tau;
         function f(x) {
             var ePowX = Math.pow(Math.E, x);
             return (ePowX * (Math_sq(D) - deviationSq - v - ePowX)) / Math_sq(2.0 * (deviationSq + v + ePowX))
@@ -262,7 +262,7 @@ define(["require", "exports"], function (require, exports) {
     }
     exports.toGlicko2Scale = toGlicko2Scale;
     function toGlicko1Scale(rating) {
-        // r' = 173.7178µ + 1500, RD' = 173.7178φ²
+        // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
         return {
             rating: 173.7178 * rating.rating + 1500.0,
             deviation: 173.7178 * rating.deviation,

@@ -1,7 +1,9 @@
 var falseskill = require('../index.js'),
     assert = require('assert')
-
+    
 // example taken from http://www.glicko.net/glicko/glicko2.pdf
+
+falseskill.Tau = 0.5
 
 var players = [
     {
@@ -40,7 +42,7 @@ var newRating = falseskill.calculateRating(players[0], players.slice(1), outcome
 // this is actually not exactly what's in the example, which was done by hand:
 
 assert.strictEqual(newRating.rating.toFixed(5), '1464.05067')   // 1464.06
-assert.strictEqual(newRating.deviation.toFixed(5), '151.51652') // 151.52
+assert.strictEqual(newRating.deviation.toFixed(5), '151.51653') // 151.52
 assert.strictEqual(newRating.volatility.toFixed(5), '0.06000')  // 0.05999
 
 console.log('OK')
