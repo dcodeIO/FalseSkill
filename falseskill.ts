@@ -71,13 +71,21 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     function g(deviation) {
         return 1.0 / (Math.sqrt(1.0 + 3.0 * Math_sq(deviation) / PiSq))
     }
-    function E(rating, opponentRating, opponentDeviation) {
-        return 1.0 / (1.0 + Math.exp(-g(opponentDeviation) * (rating - opponentRating)))
+    // function E(rating, opponentRating, opponentDeviation) {
+    //     return 1.0 / (1.0 + Math.exp(-g(opponentDeviation) * (rating - opponentRating)))
+    // }
+    function E_cached(rating, opponentRating, g_opponent) {
+        return 1.0 / (1.0 + Math.exp(-g_opponent * (rating - opponentRating)))
     }
     var v = 0
+    var cached_gj = [],
+        cached_Ej = []
     opponents.forEach(opponent => {
-        var e = E(player.rating, opponent.rating, opponent.deviation)
-        v += Math_sq(g(opponent.deviation)) * e * (1.0 - e)
+        var gj = g(opponent.deviation)
+        cached_gj.push(gj)
+        var Ej = E_cached(player.rating, opponent.rating, gj)
+        cached_Ej.push(Ej)
+        v += Math_sq(gj) * Ej * (1.0 - Ej)
     })
     v = 1.0 / v
     
@@ -85,21 +93,21 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     //         pre-period rating to the performance rating based only on game outcomes
     var DSum = 0
     opponents.forEach((opponent, index) => {
-        DSum += g(opponent.deviation) * (outcomes[index] - E(player.rating, opponent.rating, opponent.deviation))
+        DSum += cached_gj[index] * (outcomes[index] - cached_Ej[index])
     })
     var D = v * DSum
     
     // Step 5: Determine the new value, σ, of the volatility
     var a = Math.log(Math_sq(player.volatility))
     var deviationSq = Math_sq(player.deviation)
+    var DSq = Math_sq(D)
     const TauSq = Tau * Tau
     function f(x) {
         var ePowX = Math.pow(Math.E, x)
-        return (ePowX * (Math_sq(D) - deviationSq - v - ePowX)) / Math_sq(2.0 * (deviationSq + v + ePowX))
+        return (ePowX * (DSq - deviationSq - v - ePowX)) / Math_sq(2.0 * (deviationSq + v + ePowX))
              - (x - a) / TauSq
     }
     var A = a
-    var DSq = Math_sq(D)
     var deviationSq = Math_sq(player.deviation)
     var B = 0.0
     if (DSq > deviationSq + v) {
@@ -199,10 +207,11 @@ export function deriveMatches(rankings : Ranking[], filterBy? : PlayerRating) : 
     //  [p1] rank 1,
     //  [p2, p3] rank 2 (draw between p2 and p3),
     //  [p4] rank 3
-    // ]
-    
-    interface IndexedPlayer { rank: number, player : PlayerRating }
-    
+    // ]    
+    interface IndexedPlayer {
+        rank: number,
+        player : PlayerRating
+    }    
     var indexedPlayers : IndexedPlayer[] = [],
         playersAlreadyIndexed : PlayerRating[] = [],
         filteredPlayer : IndexedPlayer = null
