@@ -1,10 +1,10 @@
 declare module falseskill {
         
-    export const Tau;
+    export var Tau;
 
-    export const InitialRating;
-    export const InitialDeviation;
-    export const InitialVolatility;
+    export var InitialRating;
+    export var InitialDeviation;
+    export var InitialVolatility;
 
     export const Loss;
     export const Draw;
