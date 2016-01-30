@@ -1,0 +1,34 @@
+{
+  "name": "falseskill",
+  "version": "1.0.0",
+  "description": "A literal implementation of the Glicko-2 rating system in TypeScript. Got it?",
+  "author": "Daniel Wirtz <dcode@dcode.io>",
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dcodeIO/FalseSkill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dcodeIO/FalseSkill/issues"
+  },
+  "homepage": "https://github.com/dcodeIO/FalseSkill",
+  "keyword": [
+    "skill",
+    "rating",
+    "glicko",
+    "matchmaking"
+  ],
+  "dependencies": {
+    "amdefine": "^1.0.0"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "make": "npm run-script compile && npm run-script compress",
+    "compile": "tsc",
+    "compress": "node node_modules/uglify-js/bin/uglifyjs falseskill.js --compress --source-map falseskill.min.js.map --in-source-map falseskill.js.map -o falseskill.min.js",
+    "test": "node tests/test.js"
+  },
+  "devDependencies": {
+    "uglify-js": "^2.6.1"
+  }
+}
