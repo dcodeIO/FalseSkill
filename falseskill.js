@@ -4,7 +4,11 @@
  * @see https://github.com/dcodeIO/FalseSkill for details
  */
 define(["require", "exports"], function (require, exports) {
+    //
+    // Glicko-2 as described in "Example of the Glicko-2 system"
+    // by Professor Mark E. Glickman, Boston University, November 30, 2013
     // ref: http://www.glicko.net/glicko/glicko2.pdf
+    //
     // The system constant, τ , which constrains the change in volatility over time, needs to be
     // set prior to application of the system. Reasonable choices are between 0.3 and 1.2,
     // though the system should be tested to decide which value results in greatest predictive
@@ -26,14 +30,52 @@ define(["require", "exports"], function (require, exports) {
     /**
      * Creates a new rating object, for a new player.
      */
-    function newRating() {
-        return {
+    function newRating(player) {
+        var rating = {
             rating: exports.InitialRating,
             deviation: exports.InitialDeviation,
             volatility: exports.InitialVolatility
         };
+        if (player)
+            return copyRating(rating, player);
+        return rating;
     }
     exports.newRating = newRating;
+    /**
+     * Copies a rating object's values to another rating object.
+     */
+    function copyRating(from, to) {
+        to.rating = from.rating;
+        to.deviation = from.deviation;
+        to.volatility = from.volatility;
+        return to;
+    }
+    exports.copyRating = copyRating;
+    /**
+     * Converts from Glicko to Glicko-2 scale.
+     */
+    function toGlicko2Scale(rating) {
+        // µ = (r − 1500)/173.7178, φ = RD/173.7178
+        return {
+            rating: (rating.rating - 1500.0) / 173.7178,
+            deviation: rating.deviation / 173.7178,
+            volatility: rating.volatility
+        };
+    }
+    exports.toGlicko2Scale = toGlicko2Scale;
+    /**
+     * Converts from Glicko-2 to Glicko scale.
+     */
+    function toGlicko1Scale(rating) {
+        // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
+        return {
+            rating: 173.7178 * rating.rating + 1500.0,
+            deviation: 173.7178 * rating.deviation,
+            volatility: rating.volatility
+        };
+    }
+    exports.toGlicko1Scale = toGlicko1Scale;
+    function Math_sq(x) { return x * x; }
     var PiSq = Math.PI * Math.PI;
     /**
      * Calculates a player's new rating once a rating period has concluded.
@@ -69,10 +111,10 @@ define(["require", "exports"], function (require, exports) {
         v = 1.0 / v;
         // Step 4: Compute the quantity ∆, the estimated improvement in rating by comparing the
         //         pre-period rating to the performance rating based only on game outcomes
-        /* var DSum = 0
-        opponents.forEach((opponent, index) => {
-            DSum += cached_g[index] * (outcomes[index] - cached_E[index])
-        }) */
+        // var DSum = 0
+        // opponents.forEach((opponent, index) => {
+        //     DSum += cached_g[index] * (outcomes[index] - cached_E[index])
+        // })
         var D = v * DSum;
         // Step 5: Determine the new value, σ, of the volatility
         var a = Math.log(Math_sq(player.volatility));
@@ -125,6 +167,13 @@ define(["require", "exports"], function (require, exports) {
     }
     exports.calculateRating = calculateRating;
     /**
+     * Updates a player's rating in place once a rating period has concluded.
+     */
+    function updateRating(player, opponents, outcomes) {
+        copyRating(calculateRating(player, opponents, outcomes), player);
+    }
+    exports.updateRating = updateRating;
+    /**
      * Calculates the new rating of a player who has not competed in the rating period.
      */
     function calculateRatingDidNotCompete(player) {
@@ -135,23 +184,6 @@ define(["require", "exports"], function (require, exports) {
         return toGlicko1Scale(player);
     }
     exports.calculateRatingDidNotCompete = calculateRatingDidNotCompete;
-    /**
-     * Copies a rating object's values to another rating object.
-     */
-    function copyRating(from, to) {
-        to.rating = from.rating;
-        to.deviation = from.deviation;
-        to.volatility = from.volatility;
-        return to;
-    }
-    exports.copyRating = copyRating;
-    /**
-     * Updates a player's rating in place once a rating period has concluded.
-     */
-    function updateRating(player, opponents, outcomes) {
-        copyRating(calculateRating(player, opponents, outcomes), player);
-    }
-    exports.updateRating = updateRating;
     /**
      * Updates the rating of a player, who has not competed in the rating period, in place.
      */
@@ -209,6 +241,7 @@ define(["require", "exports"], function (require, exports) {
      * Updates the ratings for each match played, in place.
      */
     function updateRatings(matches) {
+        // see comments in deriveMatches
         matches.forEach(function (match) {
             updateRating(match.player, match.opponents, match.outcomes);
         });
@@ -222,7 +255,7 @@ define(["require", "exports"], function (require, exports) {
     }
     /**
      * Calculates the presumed match quality for the specified player in a multiplayer game (2-N players).
-     * Returns a structure of numbers in the range of [0.0, 1.0] with 1.0 being the best quality (a draw).
+     * Returns a structure of numbers in the range of [0.0, 1.0] with 1.0 being the best quality (an expected draw).
      */
     function calculateMatchQuality(player, opponents) {
         var qualities = [], min = 1.0, max = 0.0, sum = 0.0;
@@ -253,27 +286,5 @@ define(["require", "exports"], function (require, exports) {
         };
     }
     exports.calculateMatchQuality = calculateMatchQuality;
-    // ---- Utility -----
-    function toGlicko2Scale(rating) {
-        // µ = (r − 1500)/173.7178, φ = RD/173.7178
-        return {
-            rating: (rating.rating - 1500.0) / 173.7178,
-            deviation: rating.deviation / 173.7178,
-            volatility: rating.volatility
-        };
-    }
-    exports.toGlicko2Scale = toGlicko2Scale;
-    function toGlicko1Scale(rating) {
-        // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
-        return {
-            rating: 173.7178 * rating.rating + 1500.0,
-            deviation: 173.7178 * rating.deviation,
-            volatility: rating.volatility
-        };
-    }
-    exports.toGlicko1Scale = toGlicko1Scale;
-    function Math_sq(x) {
-        return x * x;
-    }
 });
 //# sourceMappingURL=falseskill.js.map

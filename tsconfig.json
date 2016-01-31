@@ -3,9 +3,10 @@
         "target": "es5",
         "module": "amd",
         "sourceMap": true,
-        "isolatedModules": false
+        "noImplicitAny": true
     },
     "filesGlob": [
-        "**/*.ts"
+        "**/*.ts",
+        "**/*.d.ts"
     ]
 }

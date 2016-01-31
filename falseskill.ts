@@ -4,7 +4,11 @@
  * @see https://github.com/dcodeIO/FalseSkill for details
  */
 
+//
+// Glicko-2 as described in "Example of the Glicko-2 system"
+// by Professor Mark E. Glickman, Boston University, November 30, 2013
 // ref: http://www.glicko.net/glicko/glicko2.pdf
+//
 
 // The system constant, τ , which constrains the change in volatility over time, needs to be
 // set prior to application of the system. Reasonable choices are between 0.3 and 1.2,
@@ -27,28 +31,69 @@ export const Loss = 0.0
 export const Draw = 0.5
 export const Win  = 1.0
 
+// We now want to update the rating of a player with (Glicko-2) rating µ, rating deviation
+// φ, and volatility σ
+export interface PlayerRating {
+    rating     : number, // µ
+    deviation  : number, // φ
+    volatility : number  // σ
+}
+
 // The opponents’ volatilities are not relevant in the calculations.
 export interface OpponentRating {
     rating     : number, // µ
     deviation  : number  // φ
 }
 
-// We now want to update the rating of a player with (Glicko-2) rating µ, rating deviation
-// φ, and volatility σ
-export interface PlayerRating extends OpponentRating {
-    volatility : number  // σ
-}
-
 /**
  * Creates a new rating object, for a new player.
  */
-export function newRating() : PlayerRating {
-    return {
+export function newRating(player? : PlayerRating) : PlayerRating {
+    var rating = {
         rating: InitialRating,
         deviation: InitialDeviation,
         volatility: InitialVolatility
     }
+    if (player)
+        return copyRating(rating, player)
+    return rating
 }
+
+/**
+ * Copies a rating object's values to another rating object.
+ */
+export function copyRating(from : PlayerRating, to : PlayerRating) : PlayerRating {
+    to.rating = from.rating
+    to.deviation = from.deviation
+    to.volatility = from.volatility
+    return to
+}
+
+/**
+ * Converts from Glicko to Glicko-2 scale.
+ */
+export function toGlicko2Scale(rating : PlayerRating) : PlayerRating {
+    // µ = (r − 1500)/173.7178, φ = RD/173.7178
+    return {
+        rating: (rating.rating - 1500.0) / 173.7178,
+        deviation: rating.deviation / 173.7178,
+        volatility: rating.volatility
+    }
+}
+
+/**
+ * Converts from Glicko-2 to Glicko scale.
+ */
+export function toGlicko1Scale(rating : PlayerRating) : PlayerRating {
+    // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
+    return {
+        rating: 173.7178 * rating.rating + 1500.0,
+        deviation: 173.7178 * rating.deviation,
+        volatility: rating.volatility
+    }
+}
+
+function Math_sq(x : number) : number { return x * x }
 
 const PiSq = Math.PI * Math.PI
 
@@ -68,13 +113,13 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     
     // Step 3: Compute the quantity v. This is the estimated variance of the team’s/player’s
     //         rating based only on game outcomes
-    function g(deviation) {
+    function g(deviation : number) : number {
         return 1.0 / (Math.sqrt(1.0 + 3.0 * Math_sq(deviation) / PiSq))
     }
     // function E(rating, opponentRating, opponentDeviation) {
     //     return 1.0 / (1.0 + Math.exp(-g(opponentDeviation) * (rating - opponentRating)))
     // }
-    function E_cached(rating, opponentRating, g_opponent) {
+    function E_cached(rating : number, opponentRating : number, g_opponent : number) : number {
         return 1.0 / (1.0 + Math.exp(-g_opponent * (rating - opponentRating)))
     }
     var v = 0.0
@@ -90,10 +135,10 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     
     // Step 4: Compute the quantity ∆, the estimated improvement in rating by comparing the
     //         pre-period rating to the performance rating based only on game outcomes
-    /* var DSum = 0
-    opponents.forEach((opponent, index) => {
-        DSum += cached_g[index] * (outcomes[index] - cached_E[index])
-    }) */
+    // var DSum = 0
+    // opponents.forEach((opponent, index) => {
+    //     DSum += cached_g[index] * (outcomes[index] - cached_E[index])
+    // })
     var D = v * DSum
     
     // Step 5: Determine the new value, σ, of the volatility
@@ -101,10 +146,10 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
     var deviationSq = Math_sq(player.deviation)
     var DSq = Math_sq(D)
     const TauSq = Tau * Tau
-    function f(x) {
+    function f(x : number) : number {
         var ePowX = Math.pow(Math.E, x)
         return (ePowX * (DSq - deviationSq - v - ePowX)) / Math_sq(2.0 * (deviationSq + v + ePowX))
-             - (x - a) / TauSq
+            - (x - a) / TauSq
     }
     var A = a
     var deviationSq = Math_sq(player.deviation)
@@ -149,6 +194,13 @@ export function calculateRating(player : PlayerRating, opponents : OpponentRatin
 }
 
 /**
+ * Updates a player's rating in place once a rating period has concluded.
+ */
+export function updateRating(player : PlayerRating, opponents : OpponentRating[], outcomes : number[]) : void {
+    copyRating(calculateRating(player, opponents, outcomes), player)
+}
+
+/**
  * Calculates the new rating of a player who has not competed in the rating period.
  */
 export function calculateRatingDidNotCompete(player : PlayerRating) : PlayerRating {
@@ -160,31 +212,16 @@ export function calculateRatingDidNotCompete(player : PlayerRating) : PlayerRati
 }
 
 /**
- * Copies a rating object's values to another rating object.
- */
-export function copyRating(from : PlayerRating, to : PlayerRating) : PlayerRating {
-    to.rating = from.rating
-    to.deviation = from.deviation
-    to.volatility = from.volatility
-    return to
-}
-
-/**
- * Updates a player's rating in place once a rating period has concluded.
- */
-export function updateRating(player : PlayerRating, opponents : OpponentRating[], outcomes : number[]) : void {
-    copyRating(calculateRating(player, opponents, outcomes), player)
-}
-
-/**
  * Updates the rating of a player, who has not competed in the rating period, in place.
  */
 export function updateRatingDidNotCompete(player : PlayerRating) : void {
     copyRating(calculateRatingDidNotCompete(player), player)
 }
 
+//
 // Matches with more than two competitors, computed as a tournament in which each player
-// competed against all the other players.
+// competed against all the other players. Not officially supported by Glicko-2.
+//
 
 // Multiple players may reach the same ranking, which is then considered a draw between them.
 export interface Ranking extends Array<PlayerRating> { }
@@ -207,10 +244,12 @@ export function deriveMatches(rankings : Ranking[], filterBy? : PlayerRating) : 
     //  [p2, p3] rank 2 (draw between p2 and p3),
     //  [p4] rank 3
     // ]
+    // This should be ok AS LONG AS a player's performance does not affect any other player's
+    // performance. Is probably suboptimal if this condition isn't met.
     interface IndexedPlayer {
         rank: number,
         player : PlayerRating
-    }    
+    }
     var indexedPlayers : IndexedPlayer[] = [],
         playersAlreadyIndexed : PlayerRating[] = [],
         filteredPlayer : IndexedPlayer = null
@@ -232,8 +271,8 @@ export function deriveMatches(rankings : Ranking[], filterBy? : PlayerRating) : 
         throw Error('there is no player matching the provided filter')
     var matches : Match[] = [];
     (filterBy ? [ filteredPlayer ] : indexedPlayers).forEach(indexedPlayer => {
-        var opponents = [],
-            outcomes = []
+        var opponents : OpponentRating[] = [],
+            outcomes : number[] = []
         indexedPlayers.forEach(indexedOpponent => {
             if (indexedPlayer === indexedOpponent)
                 return
@@ -258,10 +297,16 @@ export function deriveMatches(rankings : Ranking[], filterBy? : PlayerRating) : 
  * Updates the ratings for each match played, in place.
  */
 export function updateRatings(matches : Match[]) : void {
+    // see comments in deriveMatches
     matches.forEach(match => {
         updateRating(match.player, match.opponents, match.outcomes)
     })
 }
+
+//
+// Presumed match quality in a single multiplayer game. Calculates quite a lot of different
+// values to pick from, depending on the application. Not officially supported by Glicko-2.
+//
 
 export interface MatchQuality {
     qualities : number[], // qualities for each opponent
@@ -281,14 +326,14 @@ function calculateMatchQualityG1(player : PlayerRating, opponent : OpponentRatin
 
 /**
  * Calculates the presumed match quality for the specified player in a multiplayer game (2-N players).
- * Returns a structure of numbers in the range of [0.0, 1.0] with 1.0 being the best quality (a draw).
+ * Returns a structure of numbers in the range of [0.0, 1.0] with 1.0 being the best quality (an expected draw).
  */
 export function calculateMatchQuality(player : PlayerRating, opponents : OpponentRating[]) : MatchQuality {
-    var qualities = [],
+    var qualities : number[] = [],
         min = 1.0,
         max = 0.0,
         sum = 0.0
-    var strongestOpponent = null,
+    var strongestOpponent : OpponentRating = null,
         strongest = 0.0
     opponents.forEach(opponent => {
         var quality = calculateMatchQualityG1(player, opponent)
@@ -315,28 +360,4 @@ export function calculateMatchQuality(player : PlayerRating, opponents : Opponen
         med: median,
         str: strongest
     }
-}
-
-// ---- Utility -----
-
-export function toGlicko2Scale(rating : PlayerRating) : PlayerRating {
-    // µ = (r − 1500)/173.7178, φ = RD/173.7178
-    return {
-        rating: (rating.rating - 1500.0) / 173.7178,
-        deviation: rating.deviation / 173.7178,
-        volatility: rating.volatility
-    }
-}
-
-export function toGlicko1Scale(rating : PlayerRating) : PlayerRating {
-    // r' = 173.7178µ' + 1500, RD' = 173.7178φ'
-    return {
-        rating: 173.7178 * rating.rating + 1500.0,
-        deviation: 173.7178 * rating.deviation,
-        volatility: rating.volatility
-    }
-}
-
-function Math_sq(x : number) : number {
-    return x * x
 }

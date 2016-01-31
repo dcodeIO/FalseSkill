@@ -8,8 +8,8 @@ A literal implementation of the [Glicko-2](http://www.glicko.net/glicko.html) ra
 
 Usage
 -----
-The make script generates an AMD module from the TypeScript sources. The npm package (`npm install falseskill`) uses
-amdefine to expose it as a CommonJS module.
+The make script generates an AMD module from the TypeScript sources. The npm package ( `npm install falseskill` )
+uses amdefine to expose it as a CommonJS module.
 
 * **falseskill.ts** is the commented TypeScript source
 * **falseskill.d.ts** is just the TypeScript definition
@@ -21,7 +21,7 @@ amdefine to expose it as a CommonJS module.
 API
 ---
 
-##### Configure your FalseSkill installment:
+##### Configuration:
 
 ```ts
 // Defaults
@@ -120,6 +120,6 @@ interface MatchQuality {
 }
 ```
 
-See `falseskill.ts` for detailed documentation.
+See [falseskill.ts](blob/master/falseskill.ts) for detailed documentation.
 
 **License:** [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
